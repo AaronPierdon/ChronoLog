@@ -16,11 +16,15 @@
   Save it as docs/demo.gif (create the docs/ folder if it doesn't exist) —
   this line picks it up automatically, no other changes needed.
 -->
-![ChronoLog demo](docs/demo.gif)
 
-*GIF coming soon — drag-and-drop ingestion, adaptive timestamp detection, and live filtering across millions of rows, in about 15 seconds.*
+**Configuring Sources**
 
-No real logs handy? **Settings → Developer → Generate Mock Log Files** creates realistic, clearly-labeled synthetic data (`MOCK-` server names, documentation-only IPs) — clean for a walkthrough, or deliberately broken to show off the parse-warning system.
+![ChronoLog Configuring Sources](docs/ConfiguringSources.gif)
+
+**Filtering Logs**
+
+![ChronoLog Configuring Sources](docs/FilteringLogs.gif)
+
 
 ---
 
@@ -34,7 +38,11 @@ You've got log data from multiple sources, none of which agree on timestamp form
 - **Scales to tens of millions of rows** on a SQLite backend instead of holding everything in memory.
 - **Filters with real logic** — OR / AND / EXCLUDE terms, run as SQL server-side rather than looped in C#.
 
-Other features: drag-and-drop ingestion (including `.zip`), reusable **LogType** profiles, per-source color coding, click-to-sort/filter grid, streaming export, and a built-in **mock log generator** (Settings → Developer) for demos and break/fix testing.
+Other features: 
+
+- **drag-and-drop ingestion** (including `.zip`), reusable **LogType** profiles, per-source color coding, click-to-sort/filter grid, streaming export, and a built-in **mock log generator** (Settings → Developer) for demos and break/fix testing.
+
+- **Generate Mock Log Files** creates realistic, clearly-labeled synthetic data (`MOCK-` server names, documentation-only IPs) — clean for a walkthrough, or deliberately broken to show off the parse-warning system.
 
 ## Usage
 
