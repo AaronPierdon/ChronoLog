@@ -193,6 +193,10 @@ public class MainViewModel : ObservableObject
     /// arguments null means "view all" (from the status bar counter, not a specific chip).</summary>
     public event Action<SourceLogType?, LogType?>? ViewWarningsRequested;
 
+    /// <summary>Bubbled up from a card's own DeleteLogTypeRequested (a chip's right-click
+    /// "Delete Log Type Entirely...") - the owner (MainWindow) runs the cascade delete.</summary>
+    public event Action<LogType>? DeleteLogTypeRequested;
+
     public MainViewModel(LogDatabase database)
     {
         _database = database;
@@ -246,6 +250,7 @@ public class MainViewModel : ObservableObject
         card.NewLogTypeRequestedForDrop += (c, paths) => NewLogTypeRequestedForDrop?.Invoke(c, paths);
         card.LogTypeSettingsRequested += (binding, logType, forceManual) => LogTypeSettingsRequested?.Invoke(binding, logType, forceManual);
         card.ViewWarningsRequested += (binding, logType) => ViewWarningsRequested?.Invoke(binding, logType);
+        card.DeleteLogTypeRequested += logType => DeleteLogTypeRequested?.Invoke(logType);
 
         source.PropertyChanged += (_, e) =>
         {

@@ -38,9 +38,43 @@ public class TimestampTokenViewModel : ObservableObject
     public string Text => Token.Text;
     public TimestampTokenHint Hint => Token.Hint;
 
-    /// <summary>Bindable source for the per-token role ComboBox in TimestampPickerControl.</summary>
-    public static IReadOnlyList<TimestampTokenRole> AvailableRoles { get; } =
+    private static readonly IReadOnlyList<TimestampTokenRole> AllRoles =
         new[] { TimestampTokenRole.Date, TimestampTokenRole.Time, TimestampTokenRole.DateTime };
+
+    private IReadOnlyList<TimestampTokenRole> _availableRoles = AllRoles;
+
+    /// <summary>Bindable source for this token's role ComboBox in TimestampPickerControl. The
+    /// one-role-total rules are still enforced by value (see TimestampPickerViewModel.
+    /// OnRoleChanged); this controls what's OFFERED: once some other token is tagged Date,
+    /// "Date" disappears from every other token's dropdown instead of staying selectable and
+    /// silently stealing the tag on pick. Recomputed by <see cref="RefreshAvailableRoles"/>
+    /// whenever any token's Role or IsSelected changes.</summary>
+    public IReadOnlyList<TimestampTokenRole> AvailableRoles
+    {
+        get => _availableRoles;
+        private set => SetProperty(ref _availableRoles, value);
+    }
+
+    /// <summary>Recomputes which roles this token should offer, given every other token's
+    /// current Role: Date is offered unless some OTHER token already holds Date (same for Time);
+    /// Date+Time is offered only when no OTHER token holds any role at all, since it can only be
+    /// the sole tagged token.</summary>
+    public void RefreshAvailableRoles(IEnumerable<TimestampTokenViewModel> allTokens)
+    {
+        var others = allTokens.Where(t => t != this).ToList();
+        bool otherHasDate = others.Any(t => t.Role == TimestampTokenRole.Date);
+        bool otherHasTime = others.Any(t => t.Role == TimestampTokenRole.Time);
+        bool otherHasAnyRole = others.Any(t => t.Role != TimestampTokenRole.None);
+
+        var options = new List<TimestampTokenRole>();
+        if (!otherHasDate) options.Add(TimestampTokenRole.Date);
+        if (!otherHasTime) options.Add(TimestampTokenRole.Time);
+        if (!otherHasAnyRole) options.Add(TimestampTokenRole.DateTime);
+
+        // Only swap the list when it actually changed, so an open dropdown isn't needlessly reset.
+        if (!options.SequenceEqual(AvailableRoles))
+            AvailableRoles = options;
+    }
 
     public bool IsSelected
     {
@@ -264,7 +298,10 @@ public class TimestampPickerViewModel : ObservableObject
                 if (e.PropertyName == nameof(TimestampTokenViewModel.Role))
                     OnRoleChanged(vm);
                 if (e.PropertyName is nameof(TimestampTokenViewModel.IsSelected) or nameof(TimestampTokenViewModel.Role))
+                {
                     RecomputeCanApply();
+                    RefreshAllAvailableRoles();
+                }
             };
             Tokens.Add(vm);
         }
@@ -279,6 +316,14 @@ public class TimestampPickerViewModel : ObservableObject
         }
 
         RecomputeCanApply();
+        RefreshAllAvailableRoles();
+    }
+
+    /// <summary>Recomputes every token's AvailableRoles from every other token's current Role -
+    /// see TimestampTokenViewModel.RefreshAvailableRoles for what "available" means here.</summary>
+    private void RefreshAllAvailableRoles()
+    {
+        foreach (var token in Tokens) token.RefreshAvailableRoles(Tokens);
     }
 
     /// <summary>Deselects every fine-grained Tokens entry - called when the user selects

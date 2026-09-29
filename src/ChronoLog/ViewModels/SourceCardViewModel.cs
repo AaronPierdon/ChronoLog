@@ -78,6 +78,11 @@ public class SourceCardViewModel : ObservableObject
     /// MainWindow, which opens the Parse Warnings window filtered to just this LogType.</summary>
     public event Action<SourceLogType, LogType>? ViewWarningsRequested;
 
+    /// <summary>Raised from a chip's right-click "Delete Log Type Entirely..." - bubbled up
+    /// through MainViewModel to MainWindow, which runs the same cross-source cascade delete as
+    /// the "Manage Log Types" window (deleting a LogType affects every card, not just this one).</summary>
+    public event Action<LogType>? DeleteLogTypeRequested;
+
     public SourceCardViewModel(LogSource source, LogDatabase database, ObservableCollection<LogType> allLogTypes)
     {
         Source = source;
@@ -230,9 +235,10 @@ public class SourceCardViewModel : ObservableObject
             var setTimestampPatternCommand = new RelayCommand(() => LogTypeSettingsRequested?.Invoke(binding, logType, true));
             var removeFromSourceCommand = new RelayCommand(() => RemoveChip(binding, logType));
             var viewWarningsCommand = new RelayCommand(() => ViewWarningsRequested?.Invoke(binding, logType));
+            var deleteLogTypeCommand = new RelayCommand(() => DeleteLogTypeRequested?.Invoke(logType));
 
             Chips.Add(new LogTypeChipViewModel(binding, logType, dropCommand, cancelCommand,
-                openSettingsCommand, setTimestampPatternCommand, removeFromSourceCommand, viewWarningsCommand));
+                openSettingsCommand, setTimestampPatternCommand, removeFromSourceCommand, viewWarningsCommand, deleteLogTypeCommand));
         }
 
         OnPropertyChanged(nameof(VisibleChips));

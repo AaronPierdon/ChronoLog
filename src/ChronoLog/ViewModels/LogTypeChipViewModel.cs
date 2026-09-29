@@ -17,7 +17,8 @@ public class LogTypeChipViewModel : ObservableObject
     public LogType LogType { get; private set; }
 
     public LogTypeChipViewModel(SourceLogType binding, LogType logType, ICommand dropCommand, ICommand cancelSyncCommand,
-        ICommand openSettingsCommand, ICommand setTimestampPatternCommand, ICommand removeFromSourceCommand, ICommand viewWarningsCommand)
+        ICommand openSettingsCommand, ICommand setTimestampPatternCommand, ICommand removeFromSourceCommand, ICommand viewWarningsCommand,
+        ICommand deleteLogTypeCommand)
     {
         Binding = binding;
         LogType = logType;
@@ -27,6 +28,7 @@ public class LogTypeChipViewModel : ObservableObject
         SetTimestampPatternCommand = setTimestampPatternCommand;
         RemoveFromSourceCommand = removeFromSourceCommand;
         ViewWarningsCommand = viewWarningsCommand;
+        DeleteLogTypeCommand = deleteLogTypeCommand;
 
         Binding.PropertyChanged += (_, e) =>
         {
@@ -79,6 +81,11 @@ public class LogTypeChipViewModel : ObservableObject
     /// <summary>Right-click menu: removes this LogType's binding (and its loaded rows) from just
     /// this source card - the LogType itself, and its bindings on any other card, are untouched.</summary>
     public ICommand RemoveFromSourceCommand { get; }
+
+    /// <summary>Right-click menu: deletes the LogType itself, everywhere - the same confirm-and-
+    /// cascade delete as the "Manage Log Types" window (every source it's bound to loses that
+    /// binding and its rows), just reachable without opening that window first.</summary>
+    public ICommand DeleteLogTypeCommand { get; }
 
     /// <summary>Clicking the error badge itself (not the right-click menu) opens the full
     /// Parse Warnings list, filtered to just this binding - "let the user see the files that

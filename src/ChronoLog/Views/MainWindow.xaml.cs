@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         _viewModel.NewLogTypeRequestedForDrop += OnNewLogTypeRequestedForDrop;
         _viewModel.LogTypeSettingsRequested += OnLogTypeSettingsRequested;
         _viewModel.ViewWarningsRequested += OnViewWarningsRequested;
+        _viewModel.DeleteLogTypeRequested += OnDeleteLogTypeRequested;
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
 
         _dropZoneDefaultBorder = (Brush)FindResource("Brush.Border");
@@ -241,6 +242,16 @@ public partial class MainWindow : Window
             var result = editorViewModel.BuildResult();
             logTypesViewModel.ApplyEditorResult(logType, result);
         }
+    }
+
+    /// <summary>A chip's right-click "Delete Log Type Entirely..." - reuses the exact same
+    /// confirm-and-cascade logic as deleting from "Manage Log Types" (see
+    /// LogTypesViewModel.Delete), so there's only one place that logic lives.</summary>
+    private void OnDeleteLogTypeRequested(LogType logType)
+    {
+        var logTypesViewModel = new LogTypesViewModel(_viewModel.LogTypes, _viewModel.Sources, _database);
+        logTypesViewModel.ConfigChanged += () => _ = _viewModel.SaveConfigAsync();
+        logTypesViewModel.DeleteCommand.Execute(logType);
     }
 
     // ===================================================================

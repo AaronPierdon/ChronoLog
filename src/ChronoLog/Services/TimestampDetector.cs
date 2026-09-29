@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using ChronoLog.Models;
 using NodaTime;
@@ -75,6 +76,11 @@ public static class TimestampDetector
         "MM-dd-yyyy HH:mm:ss",
         "MM/dd/yyyy HH:mm:ss.fffffff",
         "MM/dd/yyyy HH:mm:ss",
+        // Slash-delimited date with a literal "T" separator instead of a space - not real ISO
+        // 8601 (which uses hyphens), but a real format some devices emit.
+        "MM/dd/yyyy'T'HH:mm:ss.fffffff",
+        "MM/dd/yyyy'T'HH:mm:ss",
+        "M/d/yyyy'T'H:mm:ss",
         "dd/MM/yyyy HH:mm:ss.fffffff",
         "dd/MM/yyyy HH:mm:ss",
         "dd.MM.yyyy HH:mm:ss.fffffff",
@@ -167,6 +173,59 @@ public static class TimestampDetector
     /// ingestion. Cached without a template value; TryParseWithNodaTime supplies one per call via
     /// WithTemplateValue, which is a cheap field swap, not a re-parse.</summary>
     private static readonly ConcurrentDictionary<string, LocalDateTimePattern> NodaPatternCache = new();
+
+    // ===================================================================
+    // Entity/proximity-based heuristic detection - see TryEntityHeuristic below for the full
+    // explanation. These two regexes independently recognize "this chunk looks like a date" and
+    // "this chunk looks like a time" ANYWHERE within the leading part of a line, rather than
+    // requiring one rigid combined shape to match the whole leading timestamp in one go.
+    // ===================================================================
+
+    /// <summary>Restricts the month-name-first/day-first date entity alternatives (below) to
+    /// actual month names, rather than any 3-9 letter word - without this, a word like "INFO" or
+    /// an hour like "14" right after a syslog-style "Aug  8" would get greedily swallowed into a
+    /// false date match (mistaking the log level or the time's own hour for part of the date).</summary>
+    private const string MonthNamePattern =
+        @"(?:Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)";
+
+    // The trailing "(?:\s+\d{2,4}(?!:))?" year group on the month-name alternatives requires
+    // that the digits NOT be immediately followed by ":" - without that, "Aug  8 14:23:05"
+    // would greedily swallow the time's own "14" as if it were a 2-digit year, since a bare
+    // \d{2,4} can't otherwise tell a year apart from an hour that happens to be 2-4 digits.
+    private static readonly Regex DateEntityRegex = new(
+        $@"\d{{1,4}}[-/.]\d{{1,2}}[-/.]\d{{1,4}}|{MonthNamePattern}\.?\s+\d{{1,2}}(?:st|nd|rd|th)?,?(?:\s+\d{{2,4}}(?!:))?|\d{{1,2}}\s+{MonthNamePattern}\.?(?:\s+\d{{2,4}}(?!:))?",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex TimeEntityRegex = new(
+        @"\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?(?:\s*[AaPp][Mm])?(?:\s*Z|\s*[+-]\d{2}:?\d{2})?",
+        RegexOptions.Compiled);
+
+    /// <summary>Only the leading part of a line is scanned for date/time entities, so a later,
+    /// unrelated date mentioned in the message body (e.g. "(originally logged Jul 15
+    /// 09:00:00)") is never mistaken for the line's own leading timestamp - matching what the 4
+    /// fixed regexes above already assume implicitly via their ^ anchor.</summary>
+    private const int LeadingWindowLength = 80;
+
+    /// <summary>Small tolerance for leading whitespace/punctuation before the first recognized
+    /// entity - a pairing that starts well into the line reflects that ONE sample line's own
+    /// wording (a device name, a log level) rather than a shape every line in the file shares, so
+    /// it's rejected rather than turned into an over-fit profile.</summary>
+    private const int LineStartSlack = 2;
+
+    private readonly struct TextEntity
+    {
+        public TextEntity(int start, int length, string text)
+        {
+            Start = start;
+            Length = length;
+            Text = text;
+        }
+
+        public int Start { get; }
+        public int Length { get; }
+        public int End => Start + Length;
+        public string Text { get; }
+    }
 
     // ===================================================================
     // Public: auto-detect from a single pasted sample line
@@ -369,6 +428,7 @@ public static class TimestampDetector
         Regex? bestRegex = null;
         var bestHits = new List<(string raw, DateTime utc)>();
         double bestRate = 0;
+        string bestDescription = "Start of line";
 
         foreach (var regex in LeadingTimestampRegexCandidates)
         {
@@ -390,6 +450,30 @@ public static class TimestampDetector
                 bestRate = rate;
                 bestHits = hits;
                 bestRegex = regex;
+                bestDescription = "Start of line";
+            }
+        }
+
+        // Additional candidate source: independently recognize date-shaped and time-shaped
+        // chunks and reason about how they relate, rather than only matching one of the 4 fixed
+        // shapes above wholesale. Two different pairing strategies are tried (nearest-by-distance
+        // and first-in-reading-order - see their doc comments below) since real logs aren't
+        // consistent about which one is "correct"; both just add more candidates to the SAME vote
+        // above, so a heuristic guess only wins if it actually fits the sample better than every
+        // fixed regex already tried.
+        foreach (var pairSelector in new Func<List<TextEntity>, List<TextEntity>, (TextEntity date, TextEntity time)?>[]
+                 { PairByNearestDistance, PairByReadingOrder })
+        {
+            var heuristic = TryEntityHeuristic(nonEmpty, pairSelector);
+            if (heuristic is null) continue;
+
+            var (regex, hits, rate) = heuristic.Value;
+            if (rate > bestRate)
+            {
+                bestRate = rate;
+                bestHits = hits;
+                bestRegex = regex;
+                bestDescription = "Start of line (date and time recognized independently and paired by proximity)";
             }
         }
 
@@ -406,7 +490,7 @@ public static class TimestampDetector
         {
             Mode = TimestampLocationMode.LineStart,
             RegexPattern = bestRegex.ToString(),
-            Description = "Start of line"
+            Description = bestDescription
         };
 
         return new MultiLineDetectionResult
@@ -417,7 +501,7 @@ public static class TimestampDetector
                 new()
                 {
                     Profile = profile,
-                    Description = "Start of line",
+                    Description = bestDescription,
                     ExampleRawText = bestHits[0].raw,
                     ExampleUtc = bestHits[0].utc,
                     MatchRate = bestRate
@@ -426,6 +510,198 @@ public static class TimestampDetector
             Message = $"Matched {bestHits.Count} of {nonEmpty.Count} sample lines ({bestRate:P0})."
         };
     }
+
+    /// <summary>
+    /// Tries the entity/proximity heuristic against the sample lines using one pairing strategy,
+    /// returning the resulting regex+profile candidate and its overall hit rate (or null if no
+    /// sample line yields a usable pairing). The candidate SHAPE is derived from the first sample
+    /// line where date+time entities are found and pair up successfully - real device names/
+    /// messages differ line to line, but the regex built from that one seed line only survives
+    /// as a candidate if it then ALSO matches a good fraction of the other lines, exactly like
+    /// the fixed-regex candidates above.
+    /// </summary>
+    private static (Regex Regex, List<(string raw, DateTime utc)> Hits, double Rate)? TryEntityHeuristic(
+        List<string> nonEmptyLines,
+        Func<List<TextEntity>, List<TextEntity>, (TextEntity date, TextEntity time)?> pairSelector)
+    {
+        foreach (var seedLine in nonEmptyLines)
+        {
+            var window = seedLine.Length > LeadingWindowLength ? seedLine.Substring(0, LeadingWindowLength) : seedLine;
+            var dates = DateEntityRegex.Matches(window).Cast<Match>().Select(m => new TextEntity(m.Index, m.Length, m.Value)).ToList();
+            var times = TimeEntityRegex.Matches(window).Cast<Match>().Select(m => new TextEntity(m.Index, m.Length, m.Value)).ToList();
+            if (dates.Count == 0 || times.Count == 0) continue;
+
+            var pair = pairSelector(dates, times);
+            if (pair is null) continue;
+
+            var regex = BuildEntityRegex(seedLine, pair.Value.date, pair.Value.time);
+            if (regex is null) continue;
+
+            var hits = new List<(string raw, DateTime utc)>();
+            foreach (var line in nonEmptyLines)
+            {
+                var match = regex.Match(line);
+                if (!match.Success) continue;
+
+                var raw = ExtractTimestampText(match);
+                var probe = new TimestampProfile { Mode = TimestampLocationMode.LineStart, RegexPattern = regex.ToString() };
+                if (TryParseTimestampText(raw, probe, out var utc))
+                    hits.Add((raw, utc));
+            }
+
+            double rate = hits.Count / (double)nonEmptyLines.Count;
+            return (regex, hits, rate);
+        }
+
+        return null;
+    }
+
+    /// <summary>Nearest-by-distance pairing: among every (date, time) combination found in the
+    /// leading window, pick whichever pair has the smallest character gap between them, anchored
+    /// on whichever entity (date or time) starts essentially at the line's beginning. Handles
+    /// either order (a leading date followed by a time, or - less commonly - a leading time
+    /// followed by a date) since real formats aren't consistent about which comes first, and
+    /// prefers a genuinely adjacent date+time over a coincidental date/time-shaped run elsewhere
+    /// in a longer leading window.</summary>
+    private static (TextEntity date, TextEntity time)? PairByNearestDistance(List<TextEntity> dates, List<TextEntity> times)
+    {
+        var anchorDate = dates.Where(d => d.Start <= LineStartSlack).OrderBy(d => d.Start).Cast<TextEntity?>().FirstOrDefault();
+        var anchorTime = times.Where(t => t.Start <= LineStartSlack).OrderBy(t => t.Start).Cast<TextEntity?>().FirstOrDefault();
+
+        if (anchorDate is { } date)
+        {
+            var nearestTime = times.Where(t => !Overlaps(date, t)).OrderBy(t => Gap(date, t)).Cast<TextEntity?>().FirstOrDefault();
+            return nearestTime is { } time ? (date, time) : null;
+        }
+
+        if (anchorTime is { } time2)
+        {
+            var nearestDate = dates.Where(d => !Overlaps(d, time2)).OrderBy(d => Gap(d, time2)).Cast<TextEntity?>().FirstOrDefault();
+            return nearestDate is { } date2 ? (date2, time2) : null;
+        }
+
+        return null;
+    }
+
+    /// <summary>First-in-reading-order pairing: literally "read left to right - the first time
+    /// found belongs with the leading date", the exact scenario the user described as one
+    /// example (a leading "start" timestamp, with a second, unrelated "end" timestamp - or an
+    /// embedded date in the message text - appearing only later in the line). Distinct from
+    /// nearest-by-distance: with 3+ candidate entities in the window this can pick a different
+    /// pair than the closest-gap one, so both are tried as independent candidates and the
+    /// multi-line vote in AutoDetectLineStartMultiLine decides which one actually fits the real
+    /// sample data, rather than either heuristic being trusted outright.</summary>
+    private static (TextEntity date, TextEntity time)? PairByReadingOrder(List<TextEntity> dates, List<TextEntity> times)
+    {
+        var anchorDate = dates.Where(d => d.Start <= LineStartSlack).OrderBy(d => d.Start).Cast<TextEntity?>().FirstOrDefault();
+        if (anchorDate is { } date)
+        {
+            var firstTimeAfter = times.Where(t => t.Start >= date.End).OrderBy(t => t.Start).Cast<TextEntity?>().FirstOrDefault();
+            return firstTimeAfter is { } time ? (date, time) : null;
+        }
+
+        var anchorTime = times.Where(t => t.Start <= LineStartSlack).OrderBy(t => t.Start).Cast<TextEntity?>().FirstOrDefault();
+        if (anchorTime is { } time2)
+        {
+            var firstDateAfter = dates.Where(d => d.Start >= time2.End).OrderBy(d => d.Start).Cast<TextEntity?>().FirstOrDefault();
+            return firstDateAfter is { } date2 ? (date2, time2) : null;
+        }
+
+        return null;
+    }
+
+    private static bool Overlaps(TextEntity a, TextEntity b) => a.Start < b.End && b.Start < a.End;
+
+    private static int Gap(TextEntity a, TextEntity b) =>
+        a.Start >= b.End ? a.Start - b.End : (b.Start >= a.End ? b.Start - a.End : 0);
+
+    /// <summary>Builds an anchored (^\s*...) regex reproducing the seed line's structure from the
+    /// earlier entity through the end of the later one: literal text (escaped) for the separator
+    /// between them, and a generic digit/letter-class pattern for each token within each entity
+    /// (via <see cref="BuildBlendedSpanPattern"/>) so other lines' differing literal values still
+    /// match. The earlier entity is wrapped in a named "date" or "time" group and the later one
+    /// in the other - the same (?&lt;date&gt;...)(?&lt;time&gt;...) convention the interactive
+    /// token picker uses (see TimestampPickerViewModel.BuildRegexPattern), which
+    /// ExtractTimestampText already knows how to combine.</summary>
+    private static Regex? BuildEntityRegex(string line, TextEntity dateEntity, TextEntity timeEntity)
+    {
+        var first = dateEntity.Start <= timeEntity.Start ? dateEntity : timeEntity;
+        var second = dateEntity.Start <= timeEntity.Start ? timeEntity : dateEntity;
+        bool firstIsDate = dateEntity.Start <= timeEntity.Start;
+
+        // Only build a general profile from a pairing anchored near the very start of the line -
+        // see LineStartSlack's doc comment for why.
+        if (first.Start > LineStartSlack) return null;
+
+        var allTokens = TimestampTokenizer.Tokenize(line);
+
+        var firstPattern = BuildBlendedSpanPattern(line, allTokens, first.Start, first.End);
+        var betweenLiteral = second.Start > first.End
+            ? SeparatorPattern(line.Substring(first.End, second.Start - first.End))
+            : string.Empty;
+        var secondPattern = BuildBlendedSpanPattern(line, allTokens, second.Start, second.End);
+
+        var firstGroup = firstIsDate ? "date" : "time";
+        var secondGroup = firstIsDate ? "time" : "date";
+
+        // What comes before the first entity (within the small LineStartSlack tolerance) isn't
+        // always whitespace - a bracketed/parenthesized timestamp has a literal "[" or "("
+        // there. Pure whitespace (or nothing) stays flexible (\s*, so lines with slightly
+        // different padding still match); anything else is taken as a literal the format always
+        // has in that spot, e.g. the bracket itself.
+        var prefixText = line.Substring(0, first.Start);
+        var prefixPattern = string.IsNullOrWhiteSpace(prefixText) ? @"\s*" : Regex.Escape(prefixText);
+
+        var pattern = $@"^{prefixPattern}(?<{firstGroup}>{firstPattern}){betweenLiteral}(?<{secondGroup}>{secondPattern})";
+
+        try
+        {
+            return new Regex(pattern, RegexOptions.Compiled);
+        }
+        catch (ArgumentException)
+        {
+            // A malformed dynamically-built pattern should never crash detection - it just means
+            // this particular seed line/pairing doesn't produce a usable candidate.
+            return null;
+        }
+    }
+
+    /// <summary>Builds a generic character-class pattern for the [spanStart, spanEnd) slice of
+    /// <paramref name="line"/>, using the already-tokenized runs in <paramref name="allTokens"/>:
+    /// \d+ for a digit run, [A-Za-z]+ for a letter run, and escaped literal text for whatever
+    /// separator sits between tokens (e.g. "-" or "/") - so the resulting pattern matches the
+    /// same SHAPE on other lines even when the actual digits/letters differ.</summary>
+    private static string BuildBlendedSpanPattern(string line, List<TimestampToken> allTokens, int spanStart, int spanEnd)
+    {
+        var sb = new StringBuilder();
+        int cursor = spanStart;
+
+        foreach (var token in allTokens)
+        {
+            if (token.StartIndex + token.Length <= spanStart) continue;
+            if (token.StartIndex >= spanEnd) break;
+
+            if (token.StartIndex > cursor)
+                sb.Append(SeparatorPattern(line.Substring(cursor, token.StartIndex - cursor)));
+
+            sb.Append(token.IsNumeric ? @"\d+" : "[A-Za-z]+");
+            cursor = token.StartIndex + token.Length;
+        }
+
+        if (cursor < spanEnd)
+            sb.Append(SeparatorPattern(line.Substring(cursor, spanEnd - cursor)));
+
+        return sb.ToString();
+    }
+
+    /// <summary>A whitespace-only separator becomes a generic \s+ rather than an exact escaped
+    /// literal, so a regex built from one sample line's spacing still matches another line whose
+    /// spacing differs slightly - e.g. traditional syslog's single-digit-day padding, where a
+    /// single-digit day gets an extra leading space to line up with double-digit days. Any other
+    /// separator (a literal "-", "/", ",", a bracket, etc.) stays an exact escaped literal, since
+    /// that punctuation is part of the format itself, not incidental spacing.</summary>
+    private static string SeparatorPattern(string separator) =>
+        separator.Length > 0 && string.IsNullOrWhiteSpace(separator) ? @"\s+" : Regex.Escape(separator);
 
     private static MultiLineDetectionResult AutoDetectDelimitedMultiLine(List<string> lines, FileType fileType, char delimiter)
     {

@@ -12,6 +12,7 @@
     <UserControl.Resources>
         <conv:HexToBrushConverter x:Key="HexToBrush"/>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry"/>
     </UserControl.Resources>
 
     <Grid ToolTipService.ShowDuration="20000">
@@ -31,7 +32,7 @@
                 BorderThickness="1.4" BorderBrush="{StaticResource Brush.Border}"
                 common:DragDropBehavior.DropCommand="{Binding DropCommand}"
                 Background="{Binding ColorHex, Converter={StaticResource HexToBrush}}">
-            <!-- Right-click menu: settings/remove for this chip's LogType binding. ContextMenu
+            <!-- Right-click menu: settings/remove/delete for this chip's LogType binding. ContextMenu
                  is a separate visual tree in WPF and does NOT inherit DataContext from its
                  PlacementTarget automatically - the explicit DataContext binding below is the
                  standard fix (same pattern the app would need anywhere else it wants a
@@ -44,6 +45,8 @@
                     <MenuItem Header="Set Timestamp Pattern..." Style="{StaticResource Style.MenuItem}" Command="{Binding SetTimestampPatternCommand}"/>
                     <Separator Style="{StaticResource Style.MenuSeparator}"/>
                     <MenuItem Header="Remove From This Source" Style="{StaticResource Style.MenuItem}" Command="{Binding RemoveFromSourceCommand}"/>
+                    <MenuItem Header="Delete Log Type Entirely..." Style="{StaticResource Style.MenuItem}" Command="{Binding DeleteLogTypeCommand}"
+                              Foreground="{StaticResource Brush.Error}"/>
                 </ContextMenu>
             </Border.ContextMenu>
             <Border.Style>
@@ -65,24 +68,24 @@
             </Border.Style>
 
             <Grid>
-                <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                           HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#FF0B0E12"/>
+                <Path Width="14" Height="14" Stretch="Uniform" Data="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Path.Style>
+                        <Style TargetType="Path">
+                            <Setter Property="Fill" Value="#FF0B0E12"/>
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding DisplayMode}" Value="Icon">
                                     <Setter Property="Visibility" Value="Visible"/>
-                                    <Setter Property="Foreground" Value="{Binding ColorHex, Converter={StaticResource HexToBrush}}"/>
+                                    <Setter Property="Fill" Value="{Binding ColorHex, Converter={StaticResource HexToBrush}}"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding DisplayMode}" Value="Both">
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                    </Path.Style>
+                </Path>
 
                 <!-- Tiny syncing spinner - independent per chip, since each LogType binding
                      syncs on its own now rather than the whole card blocking together. -->

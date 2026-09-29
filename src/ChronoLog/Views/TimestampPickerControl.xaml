@@ -105,7 +105,7 @@
                                 <ComboBox Margin="0,3,0,0" FontSize="11" Width="92"
                                           Style="{StaticResource Style.DarkComboBox}"
                                           Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}"
-                                          ItemsSource="{x:Static vm:TimestampTokenViewModel.AvailableRoles}"
+                                          ItemsSource="{Binding AvailableRoles}"
                                           SelectedItem="{Binding Role}"/>
                             </StackPanel>
                         </DataTemplate>

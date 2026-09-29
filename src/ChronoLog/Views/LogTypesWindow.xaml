@@ -19,6 +19,7 @@
 
     <Window.Resources>
         <conv:HexToBrushConverter x:Key="HexToBrush"/>
+        <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry"/>
     </Window.Resources>
 
     <Grid>
@@ -77,8 +78,8 @@
 
                                     <Border Grid.Column="0" Width="34" Height="34" CornerRadius="17" Margin="0,0,10,0"
                                             Background="{Binding ColorHex, Converter={StaticResource HexToBrush}}">
-                                        <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="15"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FF0B0E12"/>
+                                        <Path Width="15" Height="15" Stretch="Uniform" Fill="#FF0B0E12"
+                                              Data="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"/>
                                     </Border>
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">

@@ -41,8 +41,8 @@ public sealed class LogBlock
     /// (the default).</summary>
     public string LogTypeColor { get; set; } = "#4C9BFF";
 
-    /// <summary>Denormalized Segoe MDL2 Assets glyph, in case the grid ever wants to show it
-    /// per-row (not used by the row tint itself, which is color-only).</summary>
+    /// <summary>Denormalized vector icon key (see Converters.IconGeometry), in case the grid
+    /// ever wants to show it per-row (not used by the row tint itself, which is color-only).</summary>
     public string LogTypeIcon { get; set; } = string.Empty;
 
     /// <summary>All lines of this block joined with '\n'. Filter matching and display read

@@ -38,7 +38,20 @@ public class ConfigService
             // early-development stage - an old or unrecognized version just starts fresh rather
             // than attempting a field-by-field migration. LogDatabase.Initialize() does the same
             // thing for the SQLite side (see its SchemaVersion check).
-            if (config is null || config.Version != AppConfig.CurrentVersion) return new AppConfig();
+            if (config is null) return new AppConfig();
+
+            // Version 2 -> 3 is the one real migration: the shape is identical, only the
+            // meaning of LogType.IconGlyph changed (Segoe MDL2 codepoint -> vector icon key, see
+            // Converters.IconGeometry), so remap it in place rather than discarding the user's
+            // sources and LogTypes.
+            if (config.Version == 2)
+            {
+                foreach (var logType in config.LogTypes)
+                    logType.IconGlyph = LogType.MigrateLegacyIcon(logType.IconGlyph);
+                config.Version = AppConfig.CurrentVersion;
+            }
+
+            if (config.Version != AppConfig.CurrentVersion) return new AppConfig();
 
             return config;
         }

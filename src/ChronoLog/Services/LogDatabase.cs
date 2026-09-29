@@ -28,15 +28,19 @@ public enum SortColumn
 /// connections and are not serialized - WAL mode lets readers proceed without waiting on the
 /// writer.
 ///
-/// Schema version 2 adds LogTypeId/LogTypeName/LogTypeColor/LogTypeIcon columns (a row is now
-/// produced by one LogType bound to one Source, not just a Source). This is a from-scratch
-/// cutover for the app's current early-development stage: if the on-disk file isn't already at
-/// schema version 2, the LogBlocks table is dropped and recreated rather than migrated -
-/// existing log data is intentionally discarded (see Initialize()).
+/// Schema version 2 added LogTypeId/LogTypeName/LogTypeColor/LogTypeIcon columns (a row is now
+/// produced by one LogType bound to one Source, not just a Source). Schema version 3 doesn't
+/// change the columns themselves, but bumps anyway: LogTypeIcon's stored values changed meaning
+/// from a Segoe MDL2 Assets font-glyph character to a vector icon key (see
+/// Converters.IconGeometry), so existing rows' icon values are stale under the new system. This
+/// is a from-scratch cutover for the app's current early-development stage: if the on-disk file
+/// isn't already at the current schema version, the LogBlocks table is dropped and recreated
+/// rather than migrated - existing log data is intentionally discarded (see Initialize()). The
+/// one exception is 2 -> 3, which is a simple in-place value remap and is migrated.
 /// </summary>
 public class LogDatabase
 {
-    private const int SchemaVersion = 2;
+    private const int SchemaVersion = 3;
 
     private readonly string _connectionString;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
@@ -62,6 +66,25 @@ public class LogDatabase
         connection.Execute("PRAGMA busy_timeout=5000;");
 
         var currentVersion = connection.ExecuteScalar<long>("PRAGMA user_version;");
+
+        // Schema 2 -> 3 has identical columns; only LogTypeIcon's stored values changed meaning
+        // (Segoe MDL2 codepoint -> vector icon key). Remap them in place instead of dropping the
+        // user's already-loaded rows.
+        var hasLogBlocksTable = connection.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'LogBlocks';") > 0;
+        if (currentVersion == 2 && hasLogBlocksTable)
+        {
+            using var transaction = connection.BeginTransaction();
+            foreach (var (legacyGlyph, iconKey) in LogType.LegacyGlyphToIconKey)
+            {
+                connection.Execute("UPDATE LogBlocks SET LogTypeIcon = @iconKey WHERE LogTypeIcon = @legacyGlyph;",
+                    new { iconKey, legacyGlyph }, transaction);
+            }
+            connection.Execute($"PRAGMA user_version = {SchemaVersion};", transaction: transaction);
+            transaction.Commit();
+            currentVersion = SchemaVersion;
+        }
+
         if (currentVersion != SchemaVersion)
         {
             // Old (or no) schema - drop and recreate rather than migrate. LogTypes are a new

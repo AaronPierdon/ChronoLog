@@ -66,7 +66,7 @@ public class LogTypeEditorViewModel : ObservableObject
     public ObservableCollection<string> PendingFilePaths { get; } = new();
     public ObservableCollection<TimestampCandidate> Candidates { get; } = new();
     public IReadOnlyList<string> Presets => PresetColors;
-    public IReadOnlyList<(string Glyph, string Label)> IconChoices => LogType.IconChoices;
+    public IReadOnlyList<IconChoice> IconChoices => LogType.IconChoices;
 
     public int StepIndex
     {
@@ -253,7 +253,7 @@ public class LogTypeEditorViewModel : ObservableObject
         _name = existing?.Name ?? string.Empty;
         _detectedFileType = existing?.Format ?? FileType.FlatText;
         _selectedColorHex = existing?.ColorHex ?? ColorPresets.NextColor();
-        _selectedIconGlyph = existing?.IconGlyph ?? LogType.IconChoices[0].Glyph;
+        _selectedIconGlyph = existing?.IconGlyph ?? LogType.IconChoices[0].Key;
         _displayMode = existing?.DisplayMode ?? LogTypeDisplayMode.Both;
 
         if (existing is not null)
@@ -282,7 +282,7 @@ public class LogTypeEditorViewModel : ObservableObject
         });
         PickIconCommand = new RelayCommand(param =>
         {
-            if (param is string glyph) SelectedIconGlyph = glyph;
+            if (param is string iconKey) SelectedIconGlyph = iconKey;
         });
         ShowRegionPickerCommand = new RelayCommand(() => ShowManualOverride = true);
 

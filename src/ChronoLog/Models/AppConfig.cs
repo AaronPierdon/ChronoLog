@@ -6,12 +6,14 @@ namespace ChronoLog.Models;
 /// <summary>Root object persisted to sources.config.json.</summary>
 public class AppConfig
 {
-    /// <summary>Bumped to 2 for the LogTypes/restructured-Source model. ConfigService.LoadAsync
+    /// <summary>Bumped to 3 because LogType.IconGlyph's meaning changed from a Segoe MDL2 Assets
+    /// font-glyph character to a vector icon key (see Converters.IconGeometry) - old persisted
+    /// icon values would just be meaningless strings under the new system. ConfigService.LoadAsync
     /// treats any other value (including a missing/old file) as "start fresh" - this is a clean
     /// cutover, not a migration, per the app's early-development stage.</summary>
     public int Version { get; set; } = CurrentVersion;
 
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     public List<LogSource> Sources { get; set; } = new();
 
