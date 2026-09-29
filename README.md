@@ -16,9 +16,9 @@
   Save it as docs/demo.gif (create the docs/ folder if it doesn't exist) —
   this line picks it up automatically, no other changes needed.
 -->
-![ChronoLog demo](docs/demo.gif)
+![ChronoLog Configuring Sources](docs/ConfiguringSources.gif)
 
-*GIF coming soon — drag-and-drop ingestion, adaptive timestamp detection, and live filtering across millions of rows, in about 15 seconds.*
+![ChronoLog Configuring Sources](docs/FilteringLogs.gif)
 
 No real logs handy? **Settings → Developer → Generate Mock Log Files** creates realistic, clearly-labeled synthetic data (`MOCK-` server names, documentation-only IPs) — clean for a walkthrough, or deliberately broken to show off the parse-warning system.
 
