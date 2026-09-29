@@ -17,11 +17,11 @@
   this line picks it up automatically, no other changes needed.
 -->
 
-Configuring Sources
+**Configuring Sources**
 
 ![ChronoLog Configuring Sources](docs/ConfiguringSources.gif)
 
-Filtering Logs
+**Filtering Logs**
 
 ![ChronoLog Configuring Sources](docs/FilteringLogs.gif)
 
