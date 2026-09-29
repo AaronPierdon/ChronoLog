@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LogAggregator.Models;
+namespace ChronoLog.Models;
 
 /// <summary>
 /// A reusable "how do I parse this kind of log" definition - file format, timestamp profile,

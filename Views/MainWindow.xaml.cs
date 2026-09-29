@@ -5,11 +5,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using LogAggregator.Models;
-using LogAggregator.Services;
-using LogAggregator.ViewModels;
+using ChronoLog.Models;
+using ChronoLog.Services;
+using ChronoLog.ViewModels;
 
-namespace LogAggregator.Views;
+namespace ChronoLog.Views;
 
 public partial class MainWindow : Window
 {

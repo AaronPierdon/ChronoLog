@@ -5,9 +5,9 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
-using LogAggregator.Models;
+using ChronoLog.Models;
 
-namespace LogAggregator.Services;
+namespace ChronoLog.Services;
 
 /// <summary>
 /// Result of the legacy single-line TimestampDetector.AutoDetect() overload. The wizard now

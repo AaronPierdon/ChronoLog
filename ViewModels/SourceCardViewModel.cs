@@ -7,11 +7,11 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
-using LogAggregator.Common;
-using LogAggregator.Models;
-using LogAggregator.Services;
+using ChronoLog.Common;
+using ChronoLog.Models;
+using ChronoLog.Services;
 
-namespace LogAggregator.ViewModels;
+namespace ChronoLog.ViewModels;
 
 /// <summary>
 /// View model for one card in the left panel. A card is a Source plus a row of LogType chips
@@ -416,7 +416,7 @@ public class SourceCardViewModel : ObservableObject
             binding.ParsedBlockCount = 0;
             MessageBox.Show(
                 $"Failed to sync \"{logType.Name}\" on source \"{Source.Name}\":\n\n{ex.Message}",
-                "Log Aggregator - Sync Error",
+                "ChronoLog - Sync Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             SyncCancelled?.Invoke(this, binding);

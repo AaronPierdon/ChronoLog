@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LogAggregator.Models;
+namespace ChronoLog.Models;
 
 /// <summary>Root object persisted to sources.config.json.</summary>
 public class AppConfig

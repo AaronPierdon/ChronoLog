@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace LogAggregator.Converters;
+namespace ChronoLog.Converters;
 
 /// <summary>
 /// Hand-authored vector icon set for LogType chips and the icon picker, replacing the previous

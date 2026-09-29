@@ -1,6 +1,6 @@
 using System;
 
-namespace LogAggregator.Models;
+namespace ChronoLog.Models;
 
 /// <summary>
 /// One detected log entry - the atomic unit for filtering, display, and export. A block may

@@ -6,12 +6,12 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using LogAggregator.Common;
-using LogAggregator.Models;
-using LogAggregator.Services;
+using ChronoLog.Common;
+using ChronoLog.Models;
+using ChronoLog.Services;
 using Microsoft.Win32;
 
-namespace LogAggregator.ViewModels;
+namespace ChronoLog.ViewModels;
 
 /// <summary>
 /// Orchestrates sources, LogTypes, config persistence, and the SQL-backed display window. Rows

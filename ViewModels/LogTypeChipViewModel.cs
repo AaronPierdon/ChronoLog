@@ -1,9 +1,9 @@
 using System;
 using System.Windows.Input;
-using LogAggregator.Common;
-using LogAggregator.Models;
+using ChronoLog.Common;
+using ChronoLog.Models;
 
-namespace LogAggregator.ViewModels;
+namespace ChronoLog.ViewModels;
 
 /// <summary>
 /// One chip on a Source card - one LogType bound to that source (see SourceLogType), rendered

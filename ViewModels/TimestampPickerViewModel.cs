@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Input;
-using LogAggregator.Common;
-using LogAggregator.Models;
-using LogAggregator.Services;
+using ChronoLog.Common;
+using ChronoLog.Models;
+using ChronoLog.Services;
 
-namespace LogAggregator.ViewModels;
+namespace ChronoLog.ViewModels;
 
 /// <summary>The role the user assigns to a selected chunk of the sample line.</summary>
 public enum TimestampTokenRole

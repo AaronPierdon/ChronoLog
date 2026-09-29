@@ -4,12 +4,12 @@ using System.Linq;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
-using LogAggregator.Common;
-using LogAggregator.Models;
-using LogAggregator.Services;
+using ChronoLog.Common;
+using ChronoLog.Models;
+using ChronoLog.Services;
 using Microsoft.Win32;
 
-namespace LogAggregator.ViewModels;
+namespace ChronoLog.ViewModels;
 
 /// <summary>
 /// Drives the 4-step Add/Edit LogType editor - the evolution of the old per-Source wizard, now

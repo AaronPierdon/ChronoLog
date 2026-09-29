@@ -4,10 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Dapper;
-using LogAggregator.Models;
+using ChronoLog.Models;
 using Microsoft.Data.Sqlite;
 
-namespace LogAggregator.Services;
+namespace ChronoLog.Services;
 
 public enum SortColumn
 {
@@ -46,7 +46,7 @@ public class LogDatabase
 
     public LogDatabase(string? dbPath = null)
     {
-        var path = dbPath ?? Path.Combine(AppContext.BaseDirectory, "logaggregator.db");
+        var path = dbPath ?? Path.Combine(AppContext.BaseDirectory, "chronolog.db");
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
     }
 

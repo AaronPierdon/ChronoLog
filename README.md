@@ -1,4 +1,4 @@
-# Log Aggregator
+# ChronoLog
 
 **A dark-themed WPF desktop tool that merges messy, mismatched log files — CSV, tab-delimited, flat text — into one filterable, sortable, exportable timeline.** Built for environments where every device speaks a different dialect: Kepware gateways, PI historians, Windows Event Viewer exports, whatever's been dumping `.txt`/`.csv` into a folder for years.
 
@@ -16,7 +16,7 @@
   Save it as docs/demo.gif (create the docs/ folder if it doesn't exist) —
   this line picks it up automatically, no other changes needed.
 -->
-![Log Aggregator demo](docs/demo.gif)
+![ChronoLog demo](docs/demo.gif)
 
 *GIF coming soon — drag-and-drop ingestion, adaptive timestamp detection, and live filtering across millions of rows, in about 15 seconds.*
 
@@ -44,18 +44,18 @@ Other features: drag-and-drop ingestion (including `.zip`), reusable **LogType**
 git clone https://github.com/AaronPierdon/LogAggregator.git
 cd LogAggregator
 dotnet build
-dotnet run --project src/LogAggregator/LogAggregator.csproj
+dotnet run --project src/ChronoLog/ChronoLog.csproj
 ```
 
-Or open `LogAggregator.sln` in Visual Studio 2022 (17.8+) and press F5.
+Or open `ChronoLog.sln` in Visual Studio 2022 (17.8+) and press F5.
 
 **Single-file `.exe`:**
 
 ```bash
-dotnet publish src/LogAggregator/LogAggregator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish src/ChronoLog/ChronoLog.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
-Lands at `.../bin/Release/net8.0-windows/win-x64/publish/LogAggregator.exe` — runs on a clean Windows machine, nothing else to install. See [`PUBLISH.md`](PUBLISH.md) for trimming/size options.
+Lands at `.../bin/Release/net8.0-windows/win-x64/publish/ChronoLog.exe` — runs on a clean Windows machine, nothing else to install. See [`PUBLISH.md`](PUBLISH.md) for trimming/size options.
 
 **Using the app:**
 
@@ -88,8 +88,8 @@ Parsing itself is layered: each candidate format is tried first through **NodaTi
 ## Project Layout
 
 ```
-LogAggregator.sln
-src/LogAggregator/
+ChronoLog.sln
+src/ChronoLog/
   App.xaml(.cs)          — entry point, global exception handling
   Themes/                — dark theme: colors, brushes, custom controls
   Models/                — LogSource, LogType, LogBlock, TimestampProfile, AppConfig

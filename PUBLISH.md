@@ -3,12 +3,12 @@
 ## Standard build (recommended - most reliable)
 
 ```
-dotnet publish src/LogAggregator/LogAggregator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish src/ChronoLog/ChronoLog.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
 Output:
 ```
-src/LogAggregator/bin/Release/net8.0-windows/win-x64/publish/LogAggregator.exe
+src/ChronoLog/bin/Release/net8.0-windows/win-x64/publish/ChronoLog.exe
 ```
 
 This embeds the entire .NET 8 runtime into one `.exe` (~150 MB). Copy that one file anywhere on
@@ -24,7 +24,7 @@ inert, a converter never fires), that's almost certainly the trimmer removing so
 thought was unused. I'd recommend leaving trimming off unless file size is a hard requirement:
 
 ```
-dotnet publish src/LogAggregator/LogAggregator.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial
+dotnet publish src/ChronoLog/ChronoLog.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial
 ```
 
 ## Framework-dependent (smallest, requires .NET 8 Desktop Runtime on target machine)
@@ -33,12 +33,12 @@ If every target machine already has the .NET 8 Desktop Runtime installed, you ca
 smaller framework-dependent single file instead:
 
 ```
-dotnet publish src/LogAggregator/LogAggregator.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
+dotnet publish src/ChronoLog/ChronoLog.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
 ```
 
 ## Verifying the publish
 
-After publishing, copy just the single `LogAggregator.exe` (nothing else from the `publish`
+After publishing, copy just the single `ChronoLog.exe` (nothing else from the `publish`
 folder is required for the true self-contained build) to a different folder or a different
 machine and double-click it. If it opens straight to the dark-themed main window with an empty
 card list, the publish worked.
